@@ -49,7 +49,7 @@ const App = () => {
           <CourseCard key={course.title} course={course} />
         ))}
       </div>
-      <p className="read-the-docs">Home for Programmers</p>
+      <p className="read-the-docs">Home for Programmers True</p>
     </>
   );
 };
