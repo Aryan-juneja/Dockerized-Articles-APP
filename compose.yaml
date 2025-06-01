@@ -29,7 +29,7 @@ services:
     # build:
     #   context: ./backend
     #   dockerfile: Dockerfile
-    image: aryan314/backend-blog:v1
+    image: aryan314/backend-blog:v4
     container_name: backend
     ports:
       - "8080:8080"
@@ -45,7 +45,7 @@ services:
     # build:
     #   context: ./frontend
     #   dockerfile: Dockerfile
-    image: aryan314/frontend-blog:v1
+    image: aryan314/frontend-blog:v6
     container_name: frontend
     ports:
       - "5173:5173"
