@@ -1,7 +1,9 @@
-name : Bloggy-cd
+name: Bloggy-cd
+
 on:
   push:
     branches: ['main']
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
@@ -18,7 +20,7 @@ jobs:
               - 'frontend/**'
             backend:
               - 'backend/**'
-  
+
   build-frontend:
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend_changed == 'true'
@@ -29,14 +31,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
       - name: Build Docker image for frontend
-        run: docker build --build-arg VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL}} -t ${{ secrets.DOCKERHUB_USERNAME }}/frontend-blog:${{ github.sha }} ./frontend
-
+        run: docker build --build-arg VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }} -t ${{ secrets.DOCKERHUB_USERNAME }}/frontend-blog:${{ github.sha }} ./frontend
       - name: Push Docker image to Docker Hub
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/frontend-blog:${{ github.sha }}
-
-
 
   build-backend:
     needs: detect-changes
@@ -48,11 +46,35 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      - name: Build Docker image for frontend
+      - name: Build Docker image for backend
         run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/backend-blog:${{ github.sha }} ./backend
-
       - name: Push Docker image to Docker Hub
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/backend-blog:${{ github.sha }}
-        
+
+  update-compose:
+    needs: [detect-changes, build-frontend, build-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Update frontend image in compose.yaml
+        if: needs.detect-changes.outputs.frontend_changed == 'true'
+        uses: fjogeleit/yaml-update-action@v0.16.0
+        with:
+          valueFile: compose.yaml
+          propertyPath: 'services.frontend.image'
+          value: '${{ secrets.DOCKERHUB_USERNAME }}/frontend-blog:${{ github.sha }}'
+          commitChange: false
+
+      - name: Update backend image in compose.yaml
+        if: needs.detect-changes.outputs.backend_changed == 'true'
+        uses: fjogeleit/yaml-update-action@v0.16.0
+        with:
+          valueFile: compose.yaml
+          propertyPath: 'services.backend.image'
+          value: '${{ secrets.DOCKERHUB_USERNAME }}/backend-blog:${{ github.sha }}'
+          commitChange: false
+
   
