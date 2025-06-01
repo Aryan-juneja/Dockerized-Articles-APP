@@ -164,47 +164,42 @@ jobs:
           port: 22
           script: |
             echo "🚀 Starting deployment on EC2..."
-            
+
             # Navigate to the project folder
             cd ~/folder
-            
-            # Pull the latest compose.yaml from GitHub
-            echo "📥 Fetching latest compose.yaml..."
+
+            # Download 'compose.yaml' from repo and save as 'docker-compose.yaml' locally
+            echo "📥 Fetching compose.yaml and saving as docker-compose.yaml..."
             curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                 -H "Accept: application/vnd.github.v3.raw" \
-                 -o compose.yaml \
-                 "https://api.github.com/repos/${{ github.repository }}/contents/compose.yaml?ref=main"
-            
-            # Check if compose.yaml was downloaded successfully
-            if [ ! -f compose.yaml ]; then
+                -H "Accept: application/vnd.github.v3.raw" \
+                -o docker-compose.yaml \
+                "https://api.github.com/repos/${{ github.repository }}/contents/compose.yaml?ref=main"
+
+            # Verify it downloaded correctly
+            if [ ! -f docker-compose.yaml ]; then
               echo "❌ Failed to download compose.yaml"
               exit 1
             fi
-            
-            echo "📋 Current compose.yaml content:"
-            cat compose.yaml
-            
-            # Stop existing containers
+
+            echo "📋 Showing docker-compose.yaml content:"
+            cat docker-compose.yaml
+
+            # Stop current containers
             echo "🛑 Stopping existing containers..."
-            if [ -f docker-compose.yml ]; then
-              sudo docker-compose -f docker-compose.yml down || true
-            fi
-            if [ -f compose.yaml ]; then
-              sudo docker-compose -f compose.yaml down || true
-            fi
-            
-            # Pull latest images
-            echo "📦 Pulling latest Docker images..."
-            sudo docker-compose -f compose.yaml pull
-            
-            # Start containers with new images
-            echo "🔄 Starting containers with updated images..."
-            sudo docker-compose -f compose.yaml up -d
-            
-            # Check container status
-            echo "✅ Deployment complete! Container status:"
-            sudo docker-compose -f compose.yaml ps
-            
-            # Show logs for quick verification
-            echo "📝 Recent logs:"
-            sudo docker-compose -f compose.yaml logs --tail=10
+            sudo docker-compose -f docker-compose.yaml down || true
+
+            # Pull new images
+            echo "📦 Pulling updated Docker images..."
+            sudo docker-compose -f docker-compose.yaml pull
+
+            # Start services
+            echo "🔄 Starting new containers..."
+            sudo docker-compose -f docker-compose.yaml up -d
+
+            # Show container status
+            echo "✅ Container status:"
+            sudo docker-compose -f docker-compose.yaml ps
+
+            # Show logs
+            echo "📝 Tail logs:"
+            sudo docker-compose -f docker-compose.yaml logs --tail=10
