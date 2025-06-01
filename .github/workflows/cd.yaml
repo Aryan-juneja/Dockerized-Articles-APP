@@ -148,3 +148,50 @@ jobs:
             echo "- Backend build failed - compose.yaml not updated for backend" >> $GITHUB_STEP_SUMMARY
           fi
           echo "Only successful builds were deployed." >> $GITHUB_STEP_SUMMARY
+
+  deploy-to-ec2:
+    needs: [detect-changes, update-compose]
+    if: always() && needs.update-compose.result == 'success' && (needs.detect-changes.outputs.backend_changed == 'true' || needs.detect-changes.outputs.frontend_changed == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Copy compose.yaml to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          source: "compose.yaml"
+          target: "~/folder/"
+          
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            echo "🚀 Starting deployment on EC2..."
+            cd ~/folder
+            
+            echo "📋 Updated compose.yaml content:"
+            cat compose.yaml
+            
+            # Stop existing containers
+            echo "🛑 Stopping existing containers..."
+            sudo docker-compose down || true
+            
+            # Pull latest images
+            echo "📦 Pulling latest Docker images..."
+            sudo docker-compose pull
+            
+            # Start containers
+            echo "🔄 Starting containers..."
+            sudo docker-compose up -d
+            
+            # Check status
+            echo "✅ Deployment complete! Container status:"
+            sudo docker-compose ps
