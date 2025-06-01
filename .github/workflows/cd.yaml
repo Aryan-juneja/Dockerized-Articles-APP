@@ -53,6 +53,7 @@ jobs:
 
   update-compose:
     needs: [detect-changes]
+    if: needs.detect-changes.outputs.backend_changed == 'true' || needs.detect-changes.outputs.frontend_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +67,14 @@ jobs:
           valueFile: compose.yaml
           propertyPath: 'services.frontend.image'
           value: '${{ secrets.DOCKERHUB_USERNAME }}/frontend-blog:${{ github.sha }}'
+          updateFile: true
           commitChange: true
+          createPR: false
+          targetBranch: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+          workDir: .
+          commitUserName: github-actions[bot]
+          commitUserEmail: 41898282+github-actions[bot]@users.noreply.github.com
 
       - name: Update backend image in compose.yaml
         if: needs.detect-changes.outputs.backend_changed == 'true'
@@ -75,6 +83,15 @@ jobs:
           valueFile: compose.yaml
           propertyPath: 'services.backend.image'
           value: '${{ secrets.DOCKERHUB_USERNAME }}/backend-blog:${{ github.sha }}'
+          updateFile: true
           commitChange: true
+          createPR: false
+          targetBranch: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+          workDir: .
+          commitUserName: github-actions[bot]
+          commitUserEmail: 41898282+github-actions[bot]@users.noreply.github.com
+
+
 
   
