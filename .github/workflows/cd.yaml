@@ -66,7 +66,7 @@ jobs:
           valueFile: compose.yaml
           propertyPath: 'services.frontend.image'
           value: '${{ secrets.DOCKERHUB_USERNAME }}/frontend-blog:${{ github.sha }}'
-          commitChange: false
+          commitChange: true
 
       - name: Update backend image in compose.yaml
         if: needs.detect-changes.outputs.backend_changed == 'true'
@@ -75,6 +75,6 @@ jobs:
           valueFile: compose.yaml
           propertyPath: 'services.backend.image'
           value: '${{ secrets.DOCKERHUB_USERNAME }}/backend-blog:${{ github.sha }}'
-          commitChange: false
+          commitChange: true
 
   
