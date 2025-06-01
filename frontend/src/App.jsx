@@ -35,7 +35,7 @@ const App = () => {
           <img src={chaiLogo} className="logo chai code" alt="Chai Code logo" />
         </a>
       </div>
-      <h1>ChaiCode DevOps cohort 🔥🔥🔥 </h1>
+      <h1>ChaiCode DevOps cohort 🔥🔥🔥🔥 </h1>
       <div className="card">
         <button onClick={fetchCourses} disabled={loading}>
           {loading ? "Loading..." : "View courses"}

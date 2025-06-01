@@ -1,4 +1,4 @@
-name: Blog-App
+version: "3.8"
 services:
   mongo-db:
     image: mongo:latest
@@ -35,7 +35,7 @@ services:
       - mongo-db
       - redis
     env_file:
-      - ./backend/.env
+      - ./.env
   frontend:
     image: aryan314/frontend-blog:82fcf2ba1708a3dfda73d792071abb2bb2d72c85
     container_name: frontend
@@ -47,8 +47,6 @@ services:
       - backend
       - mongo-db
       - redis
-    env_file:
-      - ./frontend/.env
 volumes:
   mongo-data:
     driver: local
