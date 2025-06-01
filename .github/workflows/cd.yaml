@@ -4,6 +4,10 @@ on:
   push:
     branches: ['main']
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
@@ -52,16 +56,51 @@ jobs:
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/backend-blog:${{ github.sha }}
 
   update-compose:
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.backend_changed == 'true' || needs.detect-changes.outputs.frontend_changed == 'true'
+    needs: [detect-changes, build-frontend, build-backend]
+    if: always() && (needs.detect-changes.outputs.backend_changed == 'true' || needs.detect-changes.outputs.frontend_changed == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Check build results
+        id: build_status
+        run: |
+          echo "Frontend changed: ${{ needs.detect-changes.outputs.frontend_changed }}"
+          echo "Backend changed: ${{ needs.detect-changes.outputs.backend_changed }}"
+          echo "Frontend build result: ${{ needs.build-frontend.result }}"
+          echo "Backend build result: ${{ needs.build-backend.result }}"
+          
+          # Determine what should be updated
+          FRONTEND_SUCCESS="false"
+          BACKEND_SUCCESS="false"
+          
+          if [[ "${{ needs.detect-changes.outputs.frontend_changed }}" == "true" && "${{ needs.build-frontend.result }}" == "success" ]]; then
+            FRONTEND_SUCCESS="true"
+          fi
+          
+          if [[ "${{ needs.detect-changes.outputs.backend_changed }}" == "true" && "${{ needs.build-backend.result }}" == "success" ]]; then
+            BACKEND_SUCCESS="true"
+          fi
+          
+          echo "frontend_update=$FRONTEND_SUCCESS" >> $GITHUB_OUTPUT
+          echo "backend_update=$BACKEND_SUCCESS" >> $GITHUB_OUTPUT
+          
+          # Create summary
+          if [[ "$FRONTEND_SUCCESS" == "true" && "$BACKEND_SUCCESS" == "true" ]]; then
+            echo "Both frontend and backend will be updated" >> $GITHUB_STEP_SUMMARY
+          elif [[ "$FRONTEND_SUCCESS" == "true" ]]; then
+            echo "Only frontend will be updated (backend build failed or skipped)" >> $GITHUB_STEP_SUMMARY
+          elif [[ "$BACKEND_SUCCESS" == "true" ]]; then
+            echo "Only backend will be updated (frontend build failed or skipped)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No updates will be made (all builds failed)" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Update frontend image in compose.yaml
-        if: needs.detect-changes.outputs.frontend_changed == 'true'
+        if: steps.build_status.outputs.frontend_update == 'true'
         uses: fjogeleit/yaml-update-action@v0.16.0
         with:
           valueFile: compose.yaml
@@ -74,9 +113,12 @@ jobs:
           workDir: .
           commitUserName: github-actions[bot]
           commitUserEmail: 41898282+github-actions[bot]@users.noreply.github.com
+          masterBranchName: main
+          quotingType: ''
+          force: false
 
       - name: Update backend image in compose.yaml
-        if: needs.detect-changes.outputs.backend_changed == 'true'
+        if: steps.build_status.outputs.backend_update == 'true'
         uses: fjogeleit/yaml-update-action@v0.16.0
         with:
           valueFile: compose.yaml
@@ -89,7 +131,20 @@ jobs:
           workDir: .
           commitUserName: github-actions[bot]
           commitUserEmail: 41898282+github-actions[bot]@users.noreply.github.com
+          masterBranchName: main
+          quotingType: ''
+          force: false
 
-
-
-  
+      - name: Report partial failure
+        if: |
+          (needs.detect-changes.outputs.frontend_changed == 'true' && needs.build-frontend.result != 'success') ||
+          (needs.detect-changes.outputs.backend_changed == 'true' && needs.build-backend.result != 'success')
+        run: |
+          echo "⚠️ Warning: Some builds failed!" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.detect-changes.outputs.frontend_changed }}" == "true" && "${{ needs.build-frontend.result }}" != "success" ]]; then
+            echo "- Frontend build failed - compose.yaml not updated for frontend" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ "${{ needs.detect-changes.outputs.backend_changed }}" == "true" && "${{ needs.build-backend.result }}" != "success" ]]; then
+            echo "- Backend build failed - compose.yaml not updated for backend" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "Only successful builds were deployed." >> $GITHUB_STEP_SUMMARY
