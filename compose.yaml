@@ -37,7 +37,7 @@ services:
     env_file:
       - ./backend/.env
   frontend:
-    image: aryan314/frontend-blog:a03b4c1ad98427f2d485a19729126aa52bb66af0
+    image: aryan314/frontend-blog:82fcf2ba1708a3dfda73d792071abb2bb2d72c85
     container_name: frontend
     ports:
       - '5173:5173'
