@@ -149,24 +149,13 @@ jobs:
           fi
           echo "Only successful builds were deployed." >> $GITHUB_STEP_SUMMARY
 
+
   deploy-to-ec2:
     needs: [detect-changes, update-compose]
     if: always() && needs.update-compose.result == 'success' && (needs.detect-changes.outputs.backend_changed == 'true' || needs.detect-changes.outputs.frontend_changed == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Copy compose.yaml to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          source: "compose.yaml"
-          target: "~/folder/"
-          
-      - name: Deploy on EC2
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -175,23 +164,47 @@ jobs:
           port: 22
           script: |
             echo "🚀 Starting deployment on EC2..."
+            
+            # Navigate to the project folder
             cd ~/folder
             
-            echo "📋 Updated compose.yaml content:"
+            # Pull the latest compose.yaml from GitHub
+            echo "📥 Fetching latest compose.yaml..."
+            curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                 -H "Accept: application/vnd.github.v3.raw" \
+                 -o compose.yaml \
+                 "https://api.github.com/repos/${{ github.repository }}/contents/compose.yaml?ref=main"
+            
+            # Check if compose.yaml was downloaded successfully
+            if [ ! -f compose.yaml ]; then
+              echo "❌ Failed to download compose.yaml"
+              exit 1
+            fi
+            
+            echo "📋 Current compose.yaml content:"
             cat compose.yaml
             
             # Stop existing containers
             echo "🛑 Stopping existing containers..."
-            sudo docker-compose down || true
+            if [ -f docker-compose.yml ]; then
+              sudo docker-compose -f docker-compose.yml down || true
+            fi
+            if [ -f compose.yaml ]; then
+              sudo docker-compose -f compose.yaml down || true
+            fi
             
             # Pull latest images
             echo "📦 Pulling latest Docker images..."
-            sudo docker-compose pull
+            sudo docker-compose -f compose.yaml pull
             
-            # Start containers
-            echo "🔄 Starting containers..."
-            sudo docker-compose up -d
+            # Start containers with new images
+            echo "🔄 Starting containers with updated images..."
+            sudo docker-compose -f compose.yaml up -d
             
-            # Check status
+            # Check container status
             echo "✅ Deployment complete! Container status:"
-            sudo docker-compose ps
+            sudo docker-compose -f compose.yaml ps
+            
+            # Show logs for quick verification
+            echo "📝 Recent logs:"
+            sudo docker-compose -f compose.yaml logs --tail=10

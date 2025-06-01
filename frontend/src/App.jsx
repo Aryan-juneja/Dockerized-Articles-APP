@@ -35,7 +35,7 @@ const App = () => {
           <img src={chaiLogo} className="logo chai code" alt="Chai Code logo" />
         </a>
       </div>
-      <h1>ChaiCode DevOps cohort Done </h1>
+      <h1>ChaiCode DevOps cohort 🔥 </h1>
       <div className="card">
         <button onClick={fetchCourses} disabled={loading}>
           {loading ? "Loading..." : "View courses"}
@@ -49,7 +49,7 @@ const App = () => {
           <CourseCard key={course.title} course={course} />
         ))}
       </div>
-      <p className="read-the-docs">Home for Programmers True</p>
+      <p className="read-the-docs">Home for Programmers</p>
     </>
   );
 };
