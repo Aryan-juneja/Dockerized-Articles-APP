@@ -1,36 +1,38 @@
 name: Bloggy app
 
 on:
-    pull_request:
-        branches: ['main']
-    push:
-        branches: ['main']
+  pull_request:
+    branches: ['main']
+  push:
+    branches: ['main']
+
 jobs:
-    lint:
-        runs-on: ubuntu-latest
+  lint:
+    runs-on: ubuntu-latest
 
-        strategy:
-            matrix:
-                node-version: [18.x, 20.x, 22.x]
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
 
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: ${{matrix.node-version}}
-            - run: npm ci
-            - run: cd frontend
-            - run: npm run lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+        working-directory: ./frontend
+      - run: npm run lint
+        working-directory: ./frontend
 
-    build:
-        runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: 22.x
-            - run: npm ci
-            - run: cd frontend
-            - run: npm run build
-
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - run: npm ci
+        working-directory: ./frontend
+      - run: npm run build
+        working-directory: ./frontend
